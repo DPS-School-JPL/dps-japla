@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>DPS Japla Portal</title>
+
+  <!-- TAILWIND -->
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- REACT -->
+
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- FIREBASE -->
+
+  <script type="module">
+
+    import { initializeApp }
+    from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+
+    import {
+      getFirestore,
+      collection,
+      addDoc,
+      getDocs,
+      deleteDoc,
+      doc,
+      updateDoc
+    }
+    from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    window.firebaseModules = {
+      initializeApp,
+      getFirestore,
+      collection,
+      addDoc,
+      getDocs,
+      deleteDoc,
+      doc,
+      updateDoc
+    };
+
+  </script>
+
+  <style>
+
+    body{
+      margin:0;
+      padding:0;
+      font-family:Arial,sans-serif;
+      background:linear-gradient(to right,#0f172a,#1e293b);
+      color:white;
+    }
+
+    .glass{
+      background:rgba(255,255,255,0.08);
+      backdrop-filter:blur(10px);
+      border:1px solid rgba(255,255,255,0.1);
+    }
+
+  </style>
+
+</head>
+
+<body>
+
+<div id="root"></div>
+
+<script type="text/babel">
+
+const { useState, useEffect } = React;
+
+function App(){
+
+  // ============================
+  // SIMPLE LOCAL VERSION
+  // ============================
+
+  // Firebase hataya gaya hai
+  // White page issue fix ho gaya
+
+  const ADMIN_NUMBER = "8128607969";
+
+  const ADMIN_PASSWORD = "dps2026me";
+
+  const [applications,setApplications] = useState(
+    JSON.parse(localStorage.getItem("applications")) || []
+  );
+
+  const [loggedInUser,setLoggedInUser] = useState(
+    localStorage.getItem("loggedInUser")) || "";
+
+  const [loginType,setLoginType] = useState("student");
+
+  const [mobile,setMobile] = useState("");
+
+  const [password,setPassword] = useState("");
+
+  const [studentName,setStudentName] = useState("");
+
+  const [className,setClassName] = useState("");
+
+  const [reason,setReason] = useState("");
+
+  const [search,setSearch] = useState("");
+
+  const isAdmin =
+    loggedInUser === ADMIN_NUMBER;
+
+  // ============================
+  // SAVE
+  // ============================
+
+  useEffect(()=>{
+
+    localStorage.setItem(
+      "applications",
+      JSON.stringify(applications)
+    );
+
+  },[applications]);
+
+  // ============================
+  // LOGIN
+  // ============================
+
+  const login = ()=>{
+
+    if(!mobile){
+      alert("Enter Mobile Number");
+      return;
+    }
+
+    if(loginType === "admin"){
+
+      if(
+        mobile !== ADMIN_NUMBER ||
+        password !== ADMIN_PASSWORD
+      ){
+        alert("Wrong Admin Details");
+        return;
+      }
+
+    }
+
+    localStorage.setItem(
+      "loggedInUser",
+      mobile
+    );
+
+    setLoggedInUser(mobile);
+  };
+
+  // ============================
+  // LOGOUT
+  // ============================
+
+  const logout = ()=>{
+
+    localStorage.removeItem(
+      "loggedInUser"
+    );
+
+    setLoggedInUser("");
+  };
+
+  // ============================
+  // ADD APPLICATION
+  // ============================
+
+  const addApplication = ()=>{
+
+    if(
+      !studentName ||
+      !className ||
+      !reason
+    ){
+      alert("Fill All Fields");
+      return;
+    }
+
+    const newApp = {
+
+      id: Date.now(),
+
+      studentName,
+
+      className,
+
+      reason,
+
+      mobile: loggedInUser,
+
+      status: "Pending",
+
+      date: new Date().toLocaleString()
+    };
+
+    setApplications([
+      newApp,
+      ...applications
+    ]);
+
+    setStudentName("");
+
+    setClassName("");
+
+    setReason("");
+  };
+
+  // ============================
+  // DELETE
+  // ============================
+
+  const deleteApplication = (id)=>{
+
+    const updated =
+      applications.filter(
+        app => app.id !== id
+      );
+
+    setApplications(updated);
+  };
+
+  // ============================
+  // STATUS UPDATE
+  // ============================
+
+  const updateStatus = (id,status)=>{
+
+    const updated =
+      applications.map(app=>
+
+        app.id === id
+        ? { ...app, status }
+        : app
+      );
+
+    setApplications(updated);
+  };
+
+  // ============================
+  // FILTER
+  // ============================
+
+  const filteredApps =
+    applications.filter(app=>{
+
+      const matchSearch =
+        app.studentName
+        .toLowerCase()
+        .includes(
+          search.toLowerCase()
+        );
+
+      if(isAdmin){
+        return matchSearch;
+      }
+
+      return (
+        app.mobile === loggedInUser &&
+        matchSearch
+      );
+
+    });
+
+  // ============================
+  // LOGIN PAGE
+  // ============================
+
+  if(!loggedInUser){
+
+    return(
+
+      <div className="min-h-screen flex items-center justify-center p-5">
+
+        <div className="glass p-10 rounded-3xl w-full max-w-md">
+
+          <h1 className="text-5xl font-bold text-center text-yellow-300">
+
+            DPS Japla
+
+          </h1>
+
+          <p className="text-center mt-3 text-gray-300">
+
+            Student & Admin Portal
+
+          </p>
+
+          <select
+            value={loginType}
+            onChange={(e)=>setLoginType(e.target.value)}
+            className="w-full mt-6 p-4 rounded-xl text-black font-bold"
+          >
+
+            <option value="student">
+              Student Login
+            </option>
+
+            <option value="admin">
+              Admin Login
+            </option>
+
+          </select>
+
+          <input
+            type="number"
+            placeholder="Enter Mobile Number"
+            value={mobile}
+            onChange={(e)=>setMobile(e.target.value)}
+            className="w-full mt-4 p-4 rounded-xl text-black font-bold"
+          />
+
+          {
+            loginType === "admin" && (
+
+              <input
+                type="password"
+                placeholder="Enter Password"
+                value={password}
+                onChange={(e)=>setPassword(e.target.value)}
+                className="w-full mt-4 p-4 rounded-xl text-black font-bold"
+              />
+
+            )
+          }
+
+          <button
+            onClick={login}
+            className="w-full mt-5 bg-green-500 py-4 rounded-xl font-bold text-lg"
+          >
+            Login
+          </button>
+
+        </div>
+
+      </div>
+    );
+  }
+
+  // ============================
+  // MAIN APP
+  // ============================
+
+  return(
+
+    <div className="min-h-screen">
+
+      <div className="glass p-6">
+
+        <div className="flex justify-between items-center flex-wrap gap-4">
+
+          <div>
+
+            <h1 className="text-4xl font-bold text-yellow-300">
+
+              DPS Japla
+
+            </h1>
+
+            <p className="text-gray-300 mt-1">
+
+              Divine Public School
+
+            </p>
+
+          </div>
+
+          <button
+            onClick={logout}
+            className="bg-red-500 px-5 py-2 rounded-xl font-bold"
+          >
+            Logout
+          </button>
+
+        </div>
+
+      </div>
+
+      <div className="text-center p-8">
+
+        <h2 className="text-5xl font-bold text-cyan-300">
+
+          {
+            isAdmin
+            ? "Welcome Admin"
+            : "Welcome Student"
+          }
+
+        </h2>
+
+      </div>
+
+      {
+        !isAdmin && (
+
+          <div className="p-6">
+
+            <div className="glass p-6 rounded-3xl max-w-4xl mx-auto">
+
+              <h2 className="text-3xl font-bold text-yellow-300 mb-6">
+
+                Student Application Form
+
+              </h2>
+
+              <div className="grid md:grid-cols-2 gap-4">
+
+                <input
+                  type="text"
+                  placeholder="Student Name"
+                  value={studentName}
+                  onChange={(e)=>setStudentName(e.target.value)}
+                  className="p-4 rounded-xl text-black font-bold"
+                />
+
+                <input
+                  type="text"
+                  placeholder="Class"
+                  value={className}
+                  onChange={(e)=>setClassName(e.target.value)}
+                  className="p-4 rounded-xl text-black font-bold"
+                />
+
+              </div>
+
+              <textarea
+                placeholder="Write Application"
+                value={reason}
+                onChange={(e)=>setReason(e.target.value)}
+                className="w-full h-40 mt-4 p-4 rounded-xl text-black font-bold"
+              ></textarea>
+
+              <button
+                onClick={addApplication}
+                className="mt-5 bg-green-500 px-8 py-3 rounded-xl font-bold text-lg"
+              >
+                Upload Application
+              </button>
+
+            </div>
+
+          </div>
+
+        )
+      }
+
+      <div className="px-6 mt-4">
+
+        <input
+          type="text"
+          placeholder="Search Student Name"
+          value={search}
+          onChange={(e)=>setSearch(e.target.value)}
+          className="w-full max-w-2xl mx-auto block p-4 rounded-xl text-black font-bold"
+        />
+
+      </div>
+
+      <div className="p-6 grid gap-6">
+
+        {
+          filteredApps.length === 0
+          ? (
+
+            <div className="text-center text-2xl text-gray-300">
+
+              No Applications Found
+
+            </div>
+
+          )
+          : (
+
+            filteredApps.map(app=>(
+
+              <div
+                key={app.id}
+                className="glass p-6 rounded-3xl"
+              >
+
+                <div className="flex flex-col md:flex-row justify-between gap-6">
+
+                  <div>
+
+                    <h2 className="text-3xl font-bold text-cyan-300">
+
+                      {app.studentName}
+
+                    </h2>
+
+                    <p className="mt-3">
+
+                      Class: {app.className}
+
+                    </p>
+
+                    <p className="mt-2">
+
+                      Date: {app.date}
+
+                    </p>
+
+                    <p className="mt-2">
+
+                      Mobile: {app.mobile}
+
+                    </p>
+
+                    <p className="mt-5 text-gray-200 leading-7">
+
+                      {app.reason}
+
+                    </p>
+
+                  </div>
+
+                  <div className="flex flex-col gap-3 min-w-[180px]">
+
+                    <div className={
+                      `px-4 py-3 rounded-xl text-center font-bold ${
+                        app.status === "Accepted"
+                        ? "bg-green-500"
+                        : app.status === "Rejected"
+                        ? "bg-red-500"
+                        : "bg-yellow-400 text-black"
+                      }`
+                    }>
+
+                      {app.status}
+
+                    </div>
+
+                    {
+                      isAdmin && (
+
+                        <>
+
+                          <button
+                            onClick={()=>
+                              updateStatus(
+                                app.id,
+                                "Accepted"
+                              )
+                            }
+                            className="bg-green-500 px-5 py-2 rounded-xl font-bold"
+                          >
+                            Accept
+                          </button>
+
+                          <button
+                            onClick={()=>
+                              updateStatus(
+                                app.id,
+                                "Rejected"
+                              )
+                            }
+                            className="bg-red-500 px-5 py-2 rounded-xl font-bold"
+                          >
+                            Reject
+                          </button>
+
+                        </>
+
+                      )
+                    }
+
+                    <button
+                      onClick={()=>
+                        deleteApplication(app.id)
+                      }
+                      className="bg-gray-700 px-5 py-2 rounded-xl font-bold"
+                    >
+                      Delete
+                    </button>
+
+                  </div>
+
+                </div>
+
+              </div>
+
+            ))
+
+          )
+        }
+
+      </div>
+
+    </div>
+  );
+}
+
+ReactDOM
+.createRoot(document.getElementById("root"))
+.render(<App />);
+
+</script>
+
+</body>
+</html>
